@@ -23,6 +23,9 @@ Scanned 5 files | 1 duplicate groups | 4 redundant bytes
 
 Report: /reports/report.html
 ```
+## Preview
+
+![DupeLens HTML Report](dupelens-screenshot.png)
 
 ## Why DupeLens?
 
@@ -91,10 +94,6 @@ sh scripts/test.sh
 ```
 
 Checks cover identical contents, different contents with equal sizes, empty files, hard links where supported, missing directories, HTML escaping, and preservation of scanned files. GitHub Actions is configured for Java 17 and 21 on Linux, macOS, and Windows.
-
-## Preview
-
-![DupeLens HTML Report](dupelens-screenshot.png)
 
 ## Contributing
 
