@@ -92,6 +92,10 @@ sh scripts/test.sh
 
 Checks cover identical contents, different contents with equal sizes, empty files, hard links where supported, missing directories, HTML escaping, and preservation of scanned files. GitHub Actions is configured for Java 17 and 21 on Linux, macOS, and Windows.
 
+## Preview
+
+![DupeLens HTML Report](dupelens-screenshot.png)
+
 ## Contributing
 
 Small, focused contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow. Useful next steps include exclusion patterns, machine-readable output, and cancellation support for long scans.
