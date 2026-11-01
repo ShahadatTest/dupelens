@@ -77,7 +77,14 @@ public final class Main {
                     BasicFileAttributes after = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
                     if (before.size() != after.size() || !before.lastModifiedTime().equals(after.lastModifiedTime())
                             || !Objects.equals(before.fileKey(), after.fileKey())) throw new IOException("file changed during scan");
-                    hashes.computeIfAbsent(hash, ignored -> new ArrayList<>()).add(path);
+                    // Windows providers may return null file keys. Check actual file identity
+                    // within matching-content buckets before counting another physical copy.
+                    List<Path> matches = hashes.computeIfAbsent(hash, ignored -> new ArrayList<>());
+                    boolean alias = false;
+                    for (Path existing : matches) {
+                        if (Files.isSameFile(existing, path)) { alias = true; break; }
+                    }
+                    if (!alias) matches.add(path);
                 } catch (IOException e) { warnings.add(path + ": " + e.getMessage()); }
             }
             for (List<Path> paths : hashes.values()) if (paths.size() > 1) {
