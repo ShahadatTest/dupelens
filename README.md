@@ -25,9 +25,13 @@ Report: /reports/report.html
 ```
 ## Preview
 
-<img src="dupelens-screenshot.png"
-     alt="DupeLens HTML Report"
-     width="550">
+## Preview
+
+<p align="center">
+  <img src="dupelens-screenshot.png"
+       alt="DupeLens HTML Report"
+       width="600">
+</p>
 
 ## Why DupeLens?
 
