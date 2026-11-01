@@ -1,0 +1,7 @@
+/target/
+/build/
+*.class
+.idea/
+.vscode/
+*.iml
+report.html
