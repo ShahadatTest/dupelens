@@ -114,7 +114,7 @@ public final class Main {
 
     private static String readable(long bytes) {
         if (bytes < 1024) return bytes + " B";
-        String[] units = {"KB", "MB", "GB", "TB", "PB", "EB"};
+        String[] units = {"KiB", "MiB", "GiB", "TiB", "PiB", "EiB"};
         double value = bytes;
         int unit = -1;
         do { value /= 1024; unit++; } while (value >= 1024 && unit < units.length - 1);

@@ -28,9 +28,17 @@ public final class SmokeTest {
             check(report.contains("<details open>"), "expandable group");
             check(report.contains("hero&amp;.png"), "escaped filename and path");
             check(report.contains("12,480"), "formatted scan count");
-            check(report.contains("1.8 MB"), "readable redundant size");
+            check(report.contains("1.8 MiB"), "readable redundant size uses IEC labels");
             check(report.contains("2 files"), "group file count");
             check(!report.contains("<script") && !report.contains("src=\"http"), "offline report");
+            String kib = Main.html(new Main.Scan(java.util.List.of(
+                new Main.Group(1024, java.util.List.of(Path.of("a.txt"), Path.of("b.txt")))),
+                java.util.List.of(), 2));
+            check(kib.contains("1.0 KiB"), "1024 bytes labelled KiB");
+            String bytes = Main.html(new Main.Scan(java.util.List.of(
+                new Main.Group(512, java.util.List.of(Path.of("c.txt"), Path.of("d.txt")))),
+                java.util.List.of(), 2));
+            check(bytes.contains("512 B"), "sizes below 1024 stay in bytes");
             try { Main.scan(root.resolve("missing")); throw new AssertionError("missing directory accepted"); }
             catch (java.io.IOException expected) { }
             try {
