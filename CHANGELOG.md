@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — 2026-11-02
+
+- Replace the decorative report mockup with a compact review workspace, readable file rows, and responsive layouts.
+- Add a separate browser-review JAR with search, explicit keeper selection, selection summaries, and a confirmation dialog listing files and retained copies.
+- Move selected duplicate copies to the system Recycle Bin/Trash only after confirmation. No permanent deletion fallback; disable deletion when Trash is unsupported.
+- Protect a remaining copy server-side, verify file bytes, and recheck size, modification time, identity, and resolved paths immediately before each move.
+- Bind browser review to loopback with private session URLs, origin/host checks, request tokens, and a downloadable session action log.
+- Add isolated safety and HTTP regression checks to both test scripts. The CLI JAR contains only read-only scanner/report classes; static reports remain script-free.
+
+Run browser review: `java -jar dupelens-review-1.2.0.jar "/path/to/folder"`. Keep the terminal running while reviewing files.
+
 ## 1.1.0 — 2026-11-02
 
 - Redesign the offline HTML report with a light layout, dark banner, scan summary, and expandable duplicate cards.

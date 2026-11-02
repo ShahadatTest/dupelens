@@ -4,7 +4,7 @@
 
 ### Find the copies. Keep control.
 
-**A dependency-free Java CLI that finds duplicate files and creates a clean, offline HTML report.**
+**Find duplicate files with a read-only CLI, or review copies in a local browser workspace. Zero runtime dependencies.**
 
 ![Java 17+](https://img.shields.io/badge/Java-17%2B-orange)
 ![Dependencies](https://img.shields.io/badge/runtime_dependencies-zero-6ee7b7)
@@ -34,21 +34,27 @@ Report: /reports/report.html
 
 ## Why DupeLens?
 
-Backups, downloads, and exported folders accumulate copies. DupeLens shows where identical contents live, sorted by redundant bytes, without deleting or moving anything.
+Backups, downloads, and exported folders accumulate copies. DupeLens shows matching contents, sorted by redundant bytes. The CLI and saved reports are read-only. A separate browser-review app can move selected copies to Recycle Bin/Trash after confirmation.
 
-- **Read-only scans:** no delete command, no automatic cleanup.
+- **Read-only CLI:** no delete command, no automatic cleanup. Deletion exists only in the separate review app.
 - **Size-first filtering:** only files with a matching size are hashed.
 - **SHA-256 fingerprints:** matching names alone never count as duplicates.
 - **Bounded hashing memory:** streams files in 64 KiB chunks.
 - **Portable reports:** one HTML file, no server, scripts, fonts, or network calls.
 - **Hard-link awareness:** excludes repeated file identities when the filesystem provides them.
 - **Practical failure handling:** unreadable files become warnings, and symbolic links are skipped.
+- **Explicit review actions:** choose keepers, review selected paths, then confirm a move to Trash. Nothing is automatically selected for deletion.
 
 ## Quick start
 
 Requires a **JDK 17 or newer**. Maven is optional.
 
-Download the runnable JAR and SHA-256 checksum from [GitHub Releases](https://github.com/illusionoftalha/dupelens/releases). Run it with `java -jar dupelens-1.1.0.jar ./your-folder --html report.html`. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+Download either runnable JAR and its SHA-256 checksum from [GitHub Releases](https://github.com/illusionoftalha/dupelens/releases):
+
+- `dupelens-1.2.0.jar`: read-only scans and saved HTML reports.
+- `dupelens-review-1.2.0.jar`: local browser review with optional, confirmed moves to Trash.
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ```sh
 # Run directly from source; no build tools required
@@ -71,9 +77,42 @@ Quote paths containing spaces. On Windows, for example:
 java -jar target/dupelens.jar "C:\Users\YourName\Downloads" --html "duplicates.html"
 ```
 
-Reports include a scan summary and expandable duplicate cards with full paths. The responsive layout works offline with no JavaScript or external assets. Use Report, Groups, and Files to navigate; open or collapse a group with a click or the keyboard.
+Reports include a scan summary and expandable duplicate groups with full paths. Saved reports work offline with no JavaScript or external assets. Use the sidebar to navigate and expand a group with a click or the keyboard.
 
 The report refuses to overwrite existing files. Reports contain full local paths; review them before sharing.
+
+## Browser review and deletion
+
+On Windows, from the folder containing the review JAR:
+
+```powershell
+java -jar .\dupelens-review-1.2.0.jar "C:\Users\YourName\Downloads"
+```
+
+Or build locally and run `java -jar target/dupelens-review.jar ./your-folder`.
+
+After scanning, DupeLens opens a private local URL in your browser (or prints the URL if automatic opening is unavailable). Keep the terminal running; press Ctrl+C to end the session. Review uses JavaScript and connects only to the Java process on `127.0.0.1`. There are no remote services or telemetry.
+
+1. Expand a group and compare full paths. Use **Keep** to protect your preferred copy.
+2. Check unwanted copies, or click **Select other copies** in that group. Nothing is selected initially.
+3. Click **Delete selected**, review the exact files and matching retained copies, then confirm **Move to Trash**. Cancel leaves files untouched. Each operation supports up to 500 files.
+4. Check the result and download the session CSV action log if needed. Logs are held in memory until the app closes.
+
+A saved `file://` HTML report cannot delete arbitrary local paths: browsers intentionally block that access. Start the review JAR to enable deletion; the CLI's `--html` output stays read-only.
+
+### How moving files stays safe
+
+The backend accepts only file IDs from the current scan, refuses selections that leave no available keeper, and processes operations serially. Immediately before each move it checks both copies' size, modification time, file identity, and resolved path, compares their contents byte-for-byte without following final-component symlinks, and checks metadata again. Changed, unavailable, or mismatched files are skipped and reported. There is no permanent-delete fallback.
+
+Trash support depends on the OS/JDK and desktop session. If Java reports it unsupported, deletion is disabled with a reason. The review process binds only to loopback and validates the host, origin, and a per-session request token. Keep its private URL to yourself.
+
+Filesystem changes and Trash operations are not atomic. Close applications modifying scanned files and rescan after external changes; a file could still change in the short interval between verification and the native Trash operation. Trash behavior and restoration depend on your system. No image-similarity matching is performed.
+
+If a Windows JDK reports `Unable to establish loopback connection`, try a writable socket directory (the current folder must be writable):
+
+```powershell
+java "-Djdk.net.unixdomain.tmpdir=$PWD" -jar .\dupelens-review-1.2.0.jar "C:\Users\YourName\Downloads"
+```
 
 ## How it works
 
@@ -102,7 +141,7 @@ sh scripts/test.sh
 ./scripts/test.ps1
 ```
 
-Checks cover identical contents, different contents with equal sizes, empty files, hard links where supported, missing directories, HTML escaping, and preservation of scanned files. GitHub Actions is configured for Java 17 and 21 on Linux, macOS, and Windows.
+Checks cover identical contents, different contents with equal sizes, empty files, hard links where supported, missing directories, HTML escaping, preservation of scanned files, keeper protection, stale files, byte verification, Trash refusal, session state, and HTTP request validation. Review tests use a fake Trash that moves isolated temporary fixtures; they never call native Trash or touch user files. GitHub Actions is configured for Java 17 and 21 on Linux, macOS, and Windows.
 
 ## Contributing
 

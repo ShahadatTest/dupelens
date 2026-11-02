@@ -131,71 +131,87 @@ public final class Main {
         return "<svg aria-hidden='true' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linejoin='round' stroke-linecap='round'>" + shape + "</svg>";
     }
 
-    public static String html(Scan scan) {
+    /** Static exports have no deletion controls or scripts. */
+    public static String html(Scan scan) { return html(scan, false, ""); }
+
+    static String html(Scan scan, boolean live, String unavailable) {
         long bytes = scan.groups.stream().mapToLong(Group::reclaimable).sum();
+        long copies = scan.groups.stream().mapToLong(g -> g.files.size() - 1).sum();
         StringBuilder out = new StringBuilder("""
-            <!doctype html>
-            <html lang="en"><head><meta charset="utf-8">
+            <!doctype html><html lang="en"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>DupeLens — Duplicate Report</title>
-            <style>
-            *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eef0f7;color:#101216;font:16px "Segoe UI",Arial,sans-serif}
-            .shell{max-width:1500px;margin:auto;min-height:100vh;background:linear-gradient(130deg,#f8f9fd,#eceff7);border:1px solid #d1d7e5;border-radius:30px;overflow:hidden}
-            .chrome{height:76px;background:linear-gradient(120deg,#e9edf6,#e2e7f2);border-bottom:1px solid #cdd5e4;display:flex;align-items:center;gap:18px;padding:0 36px}
-            .dot{width:28px;height:28px;border:1px solid #fff9;border-radius:50%;box-shadow:0 0 0 1px #0001}.red{background:#ff6258}.yellow{background:#ffbd2e}.green{background:#28c840}
-            header{display:flex;align-items:center;gap:35px;padding:22px 45px;border-bottom:1px solid #dce1ec}
-            .brand{display:flex;align-items:center;gap:22px;flex:1}.brand svg{width:48px;height:48px}.brand strong{font-size:32px;letter-spacing:-1px}.subtitle{color:#46526a;font-size:21px}
-            nav{display:flex;gap:16px;align-items:center}nav a{color:#344059;text-decoration:none;padding:13px 28px;border-radius:28px;font-size:20px}nav a.active{background:#ffffffab;border:1px solid #d4dae7;box-shadow:0 4px 8px #25314914;color:#111;font-weight:650}
-            .report-label{margin-left:auto;color:#39455d;white-space:nowrap}.info{font-size:20px;border:2px solid #657086;border-radius:50%;text-align:center;width:30px;height:30px;text-decoration:none;color:#46526a}
-            main{padding:20px 32px}.hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;background:radial-gradient(ellipse at 70% 130%,#202a38,#101820 75%);color:#f8f9fc;border:1px solid #080e16;border-radius:24px;padding:32px 60px;min-height:288px}
-            .badges{display:flex;gap:18px}.badge{background:linear-gradient(#303a46,#252e39);border:1px solid #657081;border-radius:26px;padding:10px 24px;font-size:17px;font-weight:600;box-shadow:inset 0 0 0 2px #ffffff09}
-            h1{font-size:clamp(30px,3.7vw,58px);letter-spacing:-1.7px;line-height:1.12;margin:20px 0 14px}.hero p{font-size:25px;color:#e1e5ec;line-height:1.5;margin:0;max-width:810px}.art{position:relative;flex:0 0 185px;height:190px}.paper{position:absolute;top:0;left:0;width:115px;height:140px;border:3px solid #adb8c8;border-radius:26px 8px 24px 24px;background:linear-gradient(140deg,#566174,#252f3e);box-shadow:inset 0 0 0 3px #ffffff20,0 8px 10px #0005}.paper:after{content:"";position:absolute;right:-3px;top:-3px;width:40px;height:40px;background:linear-gradient(45deg,#7b8596,#d1d7e1);clip-path:polygon(0 0,100% 100%,0 100%);border-radius:0 0 0 10px}.paper.back{top:56px;left:60px}
-            .stats{display:flex;align-items:center;margin:22px 0 20px;padding:24px 20px;background:#ffffff8c;border:1px solid #d5dce9;border-radius:24px;box-shadow:0 2px 3px #29364e08}
-            .stat{display:flex;align-items:center;justify-content:center;gap:30px;flex:1;font-size:25px}.stat+.stat{border-left:2px solid #b8c1d4}.stat svg{width:40px;height:40px;color:#5a677e}.stat strong{font-weight:750}
-            .group{display:flex;align-items:flex-start;gap:36px;background:#ffffff9c;border:1px solid #d6ddea;border-radius:24px;padding:24px 28px 18px 36px;margin:18px 0;box-shadow:0 2px 3px #2430440d}
-            .file-icon{background:linear-gradient(140deg,#eef1f7,#e3e7f0);border:1px solid #e3e8f1;border-radius:20px;padding:22px;color:#566176}.file-icon svg{width:42px;height:42px;display:block}
-            details{flex:1;min-width:0}summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:20px}summary::-webkit-details-marker{display:none}summary:after{content:"";width:15px;height:15px;border-right:3px solid #47536c;border-bottom:3px solid #47536c;transform:rotate(45deg);margin:0 14px 8px 20px}details:not([open]) summary:after{transform:rotate(-45deg);margin-bottom:0}
-            h2{font-size:29px;letter-spacing:-.7px;margin:0 0 2px;overflow-wrap:anywhere}.meta{font-size:21px;color:#46536c}.count{margin-left:auto;background:#e7ebf3;border:1px solid #e1e6f0;white-space:nowrap;border-radius:26px;padding:8px 22px;font-size:20px;font-weight:650}
-            .paths{margin:9px 0 0;padding:7px 26px;background:#e9edf5;border:1px solid #e5e9f2;border-radius:16px;list-style:none;font:19px/1.45 Consolas,monospace;overflow-wrap:anywhere}
-            .notice{padding:24px 30px;border:1px solid #d6ddea;border-radius:20px;background:#ffffff9c}.notice li{overflow-wrap:anywhere}footer{padding:16px 8px 24px;color:#58657c;font-size:14px}a:focus-visible,summary:focus-visible{outline:3px solid #5179c6;outline-offset:5px}
-            @media(max-width:1050px){header{padding:20px 28px;gap:20px;flex-wrap:wrap}.brand strong{font-size:27px}nav a{padding:10px 18px}.hero{padding:30px}.hero p{font-size:21px}.art{flex-basis:145px;transform:scale(.8);transform-origin:right center}.stat{font-size:20px;gap:14px}}
-            @media(max-width:700px){.shell{border-radius:0}.chrome{height:45px;padding:0 20px;gap:10px}.dot{width:16px;height:16px}header{padding:18px;gap:14px}.brand{gap:12px}.brand strong{font-size:24px}.subtitle{font-size:16px}.report-label{display:none}nav{order:3;width:100%;gap:8px}nav a{font-size:16px;flex:1;text-align:center}.info{margin-left:auto}main{padding:16px}.hero{padding:24px;min-height:0}.hero p{font-size:18px}.art{display:none}.badge{font-size:12px;padding:8px 12px}.badges{gap:8px}.stats{padding:8px 18px;display:block}.stat{justify-content:flex-start;padding:15px 0;font-size:19px}.stat+.stat{border-left:0;border-top:1px solid #d5dce9}.stat svg{width:28px;height:28px}.group{padding:18px;gap:12px;border-radius:18px}.file-icon{padding:10px;border-radius:12px}.file-icon svg{width:24px;height:24px}h2{font-size:21px}.meta{font-size:15px}.count{font-size:13px;padding:6px 10px}summary{gap:8px;flex-wrap:wrap}summary:after{width:10px;height:10px;margin-left:4px}.paths{font-size:13px;padding:10px}.notice{padding:18px}}
-            @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-            </style></head><body><div class="shell">
-            <div class="chrome" aria-hidden="true"><i class="dot red"></i><i class="dot yellow"></i><i class="dot green"></i></div>
-            <header><div class="brand">
+            <title>DupeLens · Duplicate review</title><style>
+            :root{color-scheme:light;--ink:#18212d;--muted:#657185;--line:#e1e6ec;--paper:#fff;--bg:#f4f6f9;--accent:#3159c9;--danger:#b52e3d}
+            *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",Arial,sans-serif}button,input{font:inherit}a{color:inherit;text-decoration:none}button,a,input,summary{outline-offset:4px}button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #6c8be5}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}svg{width:22px;height:22px;flex-shrink:0}button{border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);padding:8px 13px;font-weight:600}button:hover:not(:disabled){background:#f0f3f8}.danger{background:var(--danger);border-color:var(--danger);color:#fff}.danger:hover:not(:disabled){background:#972332}
+            header{height:72px;background:#fff;border-bottom:1px solid var(--line);padding:0 36px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:750;letter-spacing:-.6px}.brand-icon{display:grid;place-items:center;width:34px;height:36px;background:#182536;border-radius:9px;color:white}.brand-icon svg{width:21px;height:21px}.header-meta{display:flex;align-items:center;gap:20px;color:var(--muted);font-size:12px}.status{display:flex;align-items:center;gap:7px}.status:before{content:"";height:6px;width:6px;border-radius:50%;background:#248468}.header-meta a{text-decoration:underline;text-underline-offset:4px}
+            .layout{max-width:1550px;display:grid;grid-template-columns:225px minmax(0,1fr);margin:auto}.sidebar{padding:34px 22px;border-right:1px solid var(--line);min-height:calc(100vh - 72px)}.section-label{color:#8590a0;text-transform:uppercase;letter-spacing:1.4px;font-size:10px;font-weight:700;margin:0 12px 12px}.side-link{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:7px;color:#5b687b;margin:4px 0;font-weight:600}.side-link.active{background:#e7edf9;color:#2c4d9e}.side-count{font-size:11px;font-weight:700}.side-note{padding:20px 12px;color:var(--muted);font-size:12px;line-height:1.7;border-top:1px solid var(--line);margin-top:32px}.side-note strong{color:#37455a;font-size:12px;display:block;margin-bottom:6px}
+            main{padding:35px 40px 100px;min-width:0}.eyebrow{font-size:10px;font-weight:700;letter-spacing:1.5px;color:#7b8799;margin-bottom:5px}h1{font-size:30px;letter-spacing:-1px;font-weight:700;line-height:1.25;margin:0 0 8px}.intro{margin:0;color:var(--muted);max-width:680px;font-size:14px}.heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:27px}.tag{border:1px solid #dce4df;color:#39745b;border-radius:5px;background:#f0f7f3;font-size:11px;padding:5px 9px;white-space:nowrap;font-weight:600}
+            .stats{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:15px;margin-bottom:28px}.stat{background:#fff;border:1px solid var(--line);padding:20px 23px;border-radius:10px}.stat.dark{background:#1a2738;color:white;border-color:#1a2738}.stat-label{font-size:11px;color:var(--muted);margin-bottom:7px}.dark .stat-label{color:#b4c1d2}.stat-value{font-size:30px;letter-spacing:-.8px;font-weight:650;line-height:1.2}.stat-foot{font-size:11px;color:#8792a2;margin-top:8px}.dark .stat-foot{color:#a9b8cd}.stat-value small{font-size:14px;font-weight:400;letter-spacing:0;color:#b9c8db}.notice{padding:13px 16px;border:1px solid #e3d8ba;border-radius:8px;background:#fffaf0;color:#745e31;margin:0 0 18px;font-size:12px}.notice a{text-decoration:underline}
+            .toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}.toolbar h2{font-size:16px;letter-spacing:-.2px;margin:0}.toolbar p{color:var(--muted);font-size:11px;margin:2px 0 0}.tools{display:flex;align-items:center;gap:8px}.search{width:260px;max-width:100%;background:white;border:1px solid #d8dfe9;border-radius:7px;padding:9px 12px;color:var(--ink)}.sort-label{font-size:11px;color:var(--muted);white-space:nowrap}.group{background:#fff;border:1px solid var(--line);border-radius:9px;margin:0 0 12px;overflow:hidden}.group.resolved{opacity:.65}summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:13px;padding:17px 20px}summary::-webkit-details-marker{display:none}summary:after{content:"";width:7px;height:7px;border-bottom:1.5px solid #7e899b;border-right:1.5px solid #7e899b;transform:rotate(-45deg);margin-left:12px;flex-shrink:0}details[open] summary:after{transform:rotate(45deg);margin-top:-4px}.file-icon{background:#eef2f9;color:#5e7496;border:1px solid #e4eaf4;border-radius:8px;width:37px;height:40px;display:grid;place-items:center;flex-shrink:0}.group-title{min-width:0;flex:1}.group-title h3{font-size:14px;margin:0 0 2px;font-weight:650;overflow-wrap:anywhere;letter-spacing:-.1px}.group-meta{font-size:11px;color:var(--muted)}.identical{color:#5c728c;font-size:10px;display:inline-block;margin-right:9px}.reclaim{text-align:right;white-space:nowrap;font-size:14px;font-weight:650}.reclaim small{display:block;font-size:10px;color:var(--muted);font-weight:400}.file-table{border-top:1px solid #edf0f5}.file-row{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:16px;align-items:center;padding:13px 20px 13px 70px}.file-row+.file-row{border-top:1px solid #edf0f5}.file-row.selected{background:#fff4f4}.file-row.kept{background:#f8fafc}.file-row.live-row{grid-template-columns:22px minmax(0,1fr) 70px 82px;padding-left:22px}.file-name{font-size:12px;font-weight:600;margin-bottom:2px;overflow-wrap:anywhere}.path{font:11px/1.6 Consolas,"Courier New",monospace;color:#748096;overflow-wrap:anywhere;word-break:break-word}.size{font-size:11px;color:var(--muted);text-align:right}.keep{font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer;color:#556478}.keep input{margin:0;accent-color:#3159c9}.pick{width:15px;height:15px;margin:0;accent-color:var(--danger)}.group-bottom{border-top:1px solid #edf0f5;padding:8px 20px;font-size:10px;color:#8390a2;display:flex;justify-content:space-between}.group-bottom button{padding:3px 8px;font-size:10px}.empty{padding:35px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:9px;color:var(--muted)}[hidden]{display:none!important}.warnings{margin-top:30px;overflow-wrap:anywhere}.warnings h2{font-size:16px}.warnings ul{padding-left:20px;color:var(--muted);font-size:12px}footer{margin-top:28px;font-size:11px;color:#8791a0;line-height:1.8}
+            .selection-bar{position:sticky;bottom:14px;z-index:5;background:#1b2738;color:#fff;border:1px solid #2e3d52;border-radius:10px;padding:14px 18px;margin-top:24px;display:flex;justify-content:space-between;gap:16px;align-items:center;box-shadow:0 8px 30px #1826381c}.selection-bar strong{font-size:13px;display:block}.selection-bar small{color:#b2bfd0;font-size:11px}.selection-actions{display:flex;align-items:center;gap:10px}.selection-actions .clear{background:transparent;border-color:#526079;color:#d4dce8}.message{font-size:12px;margin:14px 0;color:#49607e;white-space:pre-wrap}.message.error{color:var(--danger)}dialog{width:min(640px,calc(100% - 30px));border:1px solid #dce1e9;border-radius:13px;padding:28px;box-shadow:0 24px 80px #0003;color:var(--ink)}dialog::backdrop{background:#0e1c32a6}dialog h2{font-size:21px;letter-spacing:-.4px;margin:0 0 10px}dialog p{color:var(--muted);font-size:13px}dialog h3{font-size:12px;margin:18px 0 8px}.confirmation-list{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:7px;padding:10px 12px;list-style:none}.confirmation-list li{font:11px/1.7 Consolas,monospace;overflow-wrap:anywhere;margin:5px 0}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}.dialog-summary{background:#f4f6fa;border-radius:7px;padding:12px;font-size:13px}
+            @media(min-width:1600px){main{padding-right:60px;padding-left:60px}}@media(max-width:1050px){.layout{grid-template-columns:180px minmax(0,1fr)}main{padding:28px 24px 70px}.sidebar{padding:28px 14px}.stats{gap:10px}.stat{padding:16px}.stat-value{font-size:26px}.toolbar{flex-wrap:wrap}.search{width:230px}}
+            @media(max-width:720px){header{height:62px;padding:0 18px}.header-meta{gap:10px}.header-meta>a{display:none}.brand{font-size:19px}.layout{display:block}.sidebar{display:none}main{padding:25px 16px 50px}h1{font-size:26px}.heading{gap:10px}.tag{font-size:9px}.stats{grid-template-columns:1fr 1fr;gap:10px}.stat.dark{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:center}.dark .stat-label{margin:0}.dark .stat-value{text-align:right}.dark .stat-foot{grid-column:1/-1}.stat-value{font-size:26px}.intro{font-size:13px}.tools{width:100%}.search{flex:1;min-width:0}.sort-label{font-size:10px}summary{padding:14px 12px;gap:10px}.reclaim{font-size:12px}.group-title h3{font-size:12px}.file-row{padding:12px 14px;gap:10px}.file-row.live-row{padding-left:12px;grid-template-columns:18px minmax(0,1fr) 60px}.live-row .size{display:none}.file-name{font-size:11px}.path{font-size:10px}.selection-bar{padding:12px;flex-wrap:wrap;bottom:8px}.selection-actions{width:100%;justify-content:flex-end}.selection-bar strong{font-size:12px}dialog{padding:20px}.group-meta{font-size:10px}}
+            </style></head><body><header><a class="brand" href="#overview"><span class="brand-icon">
             """);
-        out.append(icon("file")).append("""
-            <div><strong>DupeLens</strong><div class="subtitle">Duplicate Report</div></div></div>
-            <nav aria-label="Report navigation"><a class="active" href="#report">Report</a><a href="#groups">Groups</a><a href="#files">Files</a></nav>
-            <span class="report-label">Offline report</span><a class="info" href="#about" aria-label="About this report">i</a></header>
-            <main id="report"><section class="hero" aria-labelledby="headline"><div><div class="badges"><span class="badge">↓ &nbsp; OFFLINE HTML</span><span class="badge">▣ &nbsp; READ-ONLY</span></div>
-            <h1 id="headline">Your duplicates, beautifully in view.</h1><p>A clean, shareable report of duplicate files, grouped by content,<br> with size impact and exact file paths.</p></div><div class="art" aria-hidden="true"><div class="paper"></div><div class="paper back"></div></div></section>
-            <section class="stats" id="files" aria-label="Scan summary">
-            """);
-        out.append("<div class='stat'>").append(icon("folder")).append("<span>Scanned <strong>")
-            .append(String.format(Locale.ROOT, "%,d", scan.files)).append("</strong> files</span></div><div class='stat'>")
-            .append(icon("layers")).append("<span><strong>").append(scan.groups.size())
-            .append("</strong> duplicate groups</span></div><div class='stat'>").append(icon("file"))
-            .append("<span><strong>").append(readable(bytes)).append("</strong> redundant</span></div></section><section id='groups' aria-label='Duplicate groups'>");
-        for (Group group : scan.groups) {
+        out.append(icon("layers")).append("</span>DupeLens</a><div class='header-meta'><span class='status'>")
+            .append(live ? "Local session" : "Offline report").append("</span><a href='#about'>About this scan</a></div></header>");
+        out.append("<div class='layout'><aside class='sidebar'><p class='section-label'>Workspace</p><a class='side-link' href='#overview'>Overview</a><a class='side-link active' href='#groups'>Duplicate groups <span class='side-count'>")
+            .append(scan.groups.size()).append("</span></a><a class='side-link' href='#warnings'>Scan warnings <span class='side-count'>")
+            .append(scan.warnings.size()).append("</span></a><div class='side-note'><strong>")
+            .append(live ? "Your files. Your choice." : "A snapshot of your files.")
+            .append("</strong>").append(live ? "Choose a copy to keep, then select unwanted copies. Files move to Trash only after you confirm." : "This saved report is read-only. Use browser review mode to select and move duplicate copies to Trash.")
+            .append("</div></aside><main id='overview'><div class='heading'><div><div class='eyebrow'>SCAN RESULTS</div><h1>Duplicate review</h1><p class='intro'>Review matching files, keep what matters, and make room for what’s next.</p></div><span class='tag'>Scan complete</span></div><section class='stats' aria-label='Scan summary'><div class='stat dark'><div class='stat-label'>Potential space to recover</div><div class='stat-value'>")
+            .append(readable(bytes)).append("</div><div class='stat-foot'>Across ").append(String.format(Locale.ROOT, "%,d", copies))
+            .append(" extra copies · estimated</div></div><div class='stat'><div class='stat-label'>Duplicate groups</div><div class='stat-value'>")
+            .append(String.format(Locale.ROOT, "%,d", scan.groups.size())).append("</div><div class='stat-foot'>Sorted by redundant size</div></div><div class='stat'><div class='stat-label'>Files scanned</div><div class='stat-value'>")
+            .append(String.format(Locale.ROOT, "%,d", scan.files)).append("</div><div class='stat-foot'>Matched by size + SHA-256</div></div></section>");
+        if (live && !unavailable.isEmpty()) out.append("<div class='notice' role='status'>Deletion unavailable: ").append(escape(unavailable)).append("</div>");
+        out.append("<section id='groups' aria-label='Duplicate groups'><div class='toolbar'><div><h2>Duplicate groups</h2><p>Expand a group to compare full file paths.</p></div><div class='tools'>");
+        if (live) out.append("<input id='search' class='search' type='search' placeholder='Search names or paths…' aria-label='Search duplicate groups'>");
+        out.append("<span class='sort-label'>Largest impact first ↓</span></div></div>");
+        for (int gi = 0; gi < scan.groups.size(); gi++) {
+            Group group = scan.groups.get(gi);
             String name = group.files.get(0).getFileName().toString();
             boolean image = name.toLowerCase(Locale.ROOT).matches(".*\\.(png|jpe?g|gif|bmp|webp|svg)");
-            out.append("<article class='group'><div class='file-icon'>").append(icon(image ? "image" : "file"))
-                .append("</div><details open><summary><div><h2>").append(escape(name))
-                .append("</h2><div class='meta'>").append(group.files.size()).append(" copies · ")
-                .append(readable(group.reclaimable())).append(" redundant</div></div><span class='count'>")
-                .append(group.files.size()).append(" files</span></summary><ul class='paths'>");
-            group.files.forEach(p -> out.append("<li>").append(escape(p.toString())).append("</li>"));
-            out.append("</ul></details></article>");
+            out.append("<article class='group' data-group='").append(gi).append("'><details").append(gi < 3 ? " open" : "").append("><summary><span class='file-icon'>")
+                .append(icon(image ? "image" : "file")).append("</span><div class='group-title'><h3>").append(escape(name))
+                .append("</h3><div class='group-meta'><span class='identical'>Matching content</span><span class='copy-count'>")
+                .append(group.files.size()).append(" files</span> · ").append(readable(group.size)).append(" each</div></div><div class='reclaim'>")
+                .append(readable(group.reclaimable())).append("<small>redundant</small></div></summary><div class='file-table'>");
+            for (int fi = 0; fi < group.files.size(); fi++) {
+                Path path = group.files.get(fi);
+                String id = gi + ":" + fi;
+                out.append("<div class='file-row").append(live ? " live-row" : "").append("' data-file='").append(id).append("' data-size='").append(group.size).append("'>");
+                if (live) out.append("<input class='pick' type='checkbox' aria-label='Select ").append(escape(path.toString())).append(" for deletion' ")
+                    .append(fi == 0 || !unavailable.isEmpty() ? "disabled" : "").append(">");
+                out.append("<div><div class='file-name'>").append(escape(path.getFileName().toString())).append("</div><div class='path'>")
+                    .append(escape(path.toString())).append("</div></div><span class='size'>").append(readable(group.size)).append("</span>");
+                if (live) out.append("<label class='keep'><input type='radio' name='keeper-").append(gi).append("' aria-label='Keep ")
+                    .append(escape(path.toString())).append("' ").append(fi == 0 ? "checked" : "").append(">Keep</label>");
+                out.append("</div>");
+            }
+            out.append("</div><div class='group-bottom'><span>Group ").append(String.format(Locale.ROOT, "%04d", gi + 1))
+                .append(" · Review paths before choosing copies</span>");
+            if (live) out.append("<button type='button' class='select-group' ").append(!unavailable.isEmpty() ? "disabled" : "").append(">Select other copies</button>");
+            out.append("</div></details></article>");
         }
-        if (scan.groups.isEmpty()) out.append("<div class='notice'>No duplicates found.</div>");
+        if (scan.groups.isEmpty()) out.append("<div class='empty'>No duplicates found. Nothing to review.</div>");
+        if (live) out.append("<div id='no-matches' class='empty' hidden>No matching groups. Try a different name or path.</div>");
         out.append("</section>");
-        if (!scan.warnings.isEmpty()) {
-            out.append("<section class='notice'><h2>Warnings</h2><ul>");
+        if (live) out.append("""
+            <div class="message" id="message" role="status" aria-live="polite"></div>
+            <div class="selection-bar"><div><strong id="selection-count">No files selected</strong><small>At least one copy in every group stays protected.</small></div><div class="selection-actions"><button class="clear" id="clear" type="button">Clear</button><button class="danger" id="delete" type="button" disabled>Delete selected</button></div></div>
+            <dialog id="confirm"><h2>Move selected copies to Trash?</h2><p>Only the files listed below will be moved to your system’s Recycle Bin or Trash. A matching copy will be kept in every affected group.</p><div class="dialog-summary" id="confirm-summary"></div><h3>Files to move</h3><ul class="confirmation-list" id="confirm-files"></ul><h3>Copies to keep</h3><ul class="confirmation-list" id="confirm-keepers"></ul><div class="dialog-actions"><button id="cancel-delete" type="button">Cancel</button><button class="danger" id="confirm-delete" type="button">Move to Trash</button></div></dialog>
+            <noscript><p class="notice">JavaScript is required for selection and deletion. No files will be changed while it is disabled.</p></noscript>
+            """);
+        out.append("<section class='warnings' id='warnings'><h2>Scan warnings</h2>");
+        if (scan.warnings.isEmpty()) out.append("<p class='intro'>No warnings reported.</p>");
+        else {
+            out.append("<ul>");
             scan.warnings.forEach(w -> out.append("<li>").append(escape(w)).append("</li>"));
-            out.append("</ul></section>");
+            out.append("</ul>");
         }
-        return out.append("<footer id='about'>Read-only report. No files modified. Redundant space is an estimate. Review full paths before sharing this report.</footer></main></div></body></html>").toString();
+        return out.append("</section><footer id='about'>").append(live ? "Local browser review. No files move until you select copies and confirm. Keep this Java session running. <a href='actions.csv'>Download action log (CSV)</a>." : "Read-only report. No files modified. Open browser review mode to manage copies.")
+            .append("<br>Space estimates may differ from physical disk usage. Matching hashes are not proof; browser review verifies bytes before moving files. Reports contain full paths—review before sharing.</footer></main></div><!--REVIEW_SCRIPT--></body></html>").toString();
     }
 }
