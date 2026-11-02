@@ -23,7 +23,6 @@ Scanned 5 files | 1 duplicate groups | 4 redundant bytes
 
 Report: /reports/report.html
 ```
-## Preview
 
 ## Preview
 
