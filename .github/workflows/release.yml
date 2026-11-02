@@ -1,0 +1,60 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        java: ['17', '21']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - run: bash scripts/test.sh
+      - run: mvn --batch-mode package
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: mvn --batch-mode package
+      - name: Publish tested JAR and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          test "$RELEASE_TAG" = "v$version"
+          cp target/dupelens.jar "dupelens-$version.jar"
+          sha256sum "dupelens-$version.jar" > SHA256SUMS.txt
+          awk '/^## / { if (found) exit; found=1; next } found {print}' CHANGELOG.md > release-notes.md
+          gh release create "$RELEASE_TAG" "dupelens-$version.jar" SHA256SUMS.txt             --verify-tag --title "DupeLens $RELEASE_TAG" --notes-file release-notes.md

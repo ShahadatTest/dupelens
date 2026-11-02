@@ -21,6 +21,16 @@ public final class SmokeTest {
             String html = Main.html(new Main.Scan(java.util.List.of(), java.util.List.of("<script> & \""), 0));
             check(!html.contains("<script>"), "HTML escaping");
             check(html.contains("&lt;script&gt;"), "escaped warning");
+            check(html.contains("No duplicates found."), "empty report");
+            String report = Main.html(new Main.Scan(java.util.List.of(
+                new Main.Group(1887436, java.util.List.of(Path.of("hero&.png"), Path.of("backup.png")))),
+                java.util.List.of(), 12480));
+            check(report.contains("<details open>"), "expandable group");
+            check(report.contains("hero&amp;.png"), "escaped filename and path");
+            check(report.contains("12,480"), "formatted scan count");
+            check(report.contains("1.8 MB"), "readable redundant size");
+            check(report.contains("2 files"), "group file count");
+            check(!report.contains("<script") && !report.contains("src=\"http"), "offline report");
             try { Main.scan(root.resolve("missing")); throw new AssertionError("missing directory accepted"); }
             catch (java.io.IOException expected) { }
             try {

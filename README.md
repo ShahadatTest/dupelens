@@ -48,6 +48,8 @@ Backups, downloads, and exported folders accumulate copies. DupeLens shows where
 
 Requires a **JDK 17 or newer**. Maven is optional.
 
+Download the runnable JAR and SHA-256 checksum from [GitHub Releases](https://github.com/illusionoftalha/dupelens/releases). Run it with `java -jar dupelens-1.1.0.jar ./your-folder --html report.html`. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+
 ```sh
 # Run directly from source; no build tools required
 java src/main/java/dev/dupelens/Main.java ./your-folder
@@ -68,6 +70,8 @@ Quote paths containing spaces. On Windows, for example:
 ```powershell
 java -jar target/dupelens.jar "C:\Users\YourName\Downloads" --html "duplicates.html"
 ```
+
+Reports include a scan summary and expandable duplicate cards with full paths. The responsive layout works offline with no JavaScript or external assets. Use Report, Groups, and Files to navigate; open or collapse a group with a click or the keyboard.
 
 The report refuses to overwrite existing files. Reports contain full local paths; review them before sharing.
 
